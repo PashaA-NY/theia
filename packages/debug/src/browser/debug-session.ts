@@ -35,7 +35,6 @@ import {
     Disposable
 } from '@theia/core';
 import { EventEmitter } from 'events';
-import { OutputChannelManager } from '@theia/output/lib/common/output-channel';
 import {
     DebugSession,
     DebugSessionFactory,
@@ -52,11 +51,16 @@ import { MessageType } from '@theia/core/lib/common/message-service-protocol';
 /**
  * DebugSession implementation.
  */
+// FIXME: get rid of Node.js EventEmitter from browser modulde, replace with core Emitter
 export class DebugSessionImpl extends EventEmitter implements DebugSession {
     protected readonly callbacks = new Map<number, (response: DebugProtocol.Response) => void>();
     protected readonly connection: Promise<WebSocketChannel>;
 
+    protected readonly onDidOutputEmitter = new Emitter<DebugProtocol.OutputEvent>();
+    readonly onDidOutput: Event<DebugProtocol.OutputEvent> = this.onDidOutputEmitter.event;
+
     protected readonly toDispose = new DisposableCollection(
+        this.onDidOutputEmitter,
         Disposable.create(() => this.callbacks.clear())
     );
 
@@ -216,6 +220,10 @@ export class DebugSessionImpl extends EventEmitter implements DebugSession {
     }
 
     protected proceedEvent(event: DebugProtocol.Event): void {
+        if (event.event === 'output') {
+            this.onDidOutputEmitter.fire(<DebugProtocol.OutputEvent>event);
+        }
+        // FIXME: replace with core events
         this.emit(event.event, event);
         this.emit('*', event);
     }
@@ -269,7 +277,6 @@ export class DebugSessionManager {
 
     constructor(
         @inject(DebugSessionFactory) protected readonly debugSessionFactory: DebugSessionFactory,
-        @inject(OutputChannelManager) protected readonly outputChannelManager: OutputChannelManager,
         @inject(ContributionProvider) @named(DebugSessionContribution) protected readonly contributions: ContributionProvider<DebugSessionContribution>,
         @inject(BreakpointsApplier) protected readonly breakpointApplier: BreakpointsApplier,
         @inject(DebugService) protected readonly debugService: DebugService,
@@ -296,11 +303,6 @@ export class DebugSessionManager {
 
         this.onDidCreateDebugSessionEmitter.fire(session);
 
-        const channel = this.outputChannelManager.getChannel(debugConfiguration.name);
-        session.on('output', event => {
-            const outputEvent = (event as DebugProtocol.OutputEvent);
-            channel.appendLine(outputEvent.body.output);
-        });
         session.on('terminated', () => this.destroy(sessionId));
 
         const initializeArgs: DebugProtocol.InitializeRequestArguments = {
