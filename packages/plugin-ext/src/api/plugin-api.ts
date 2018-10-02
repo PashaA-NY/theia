@@ -36,7 +36,8 @@ import {
     FormattingOptions,
     SingleEditOperation as ModelSingleEditOperation,
     Definition,
-    DefinitionLink
+    DefinitionLink,
+    DocumentLink
 } from './model';
 
 export interface PluginInitData {
@@ -648,6 +649,8 @@ export interface LanguagesExt {
     $provideSignatureHelp(handle: number, resource: UriComponents, position: Position): Promise<SignatureHelp | undefined>;
     $provideHover(handle: number, resource: UriComponents, position: Position): Promise<Hover | undefined>;
     $provideDocumentFormattingEdits(handle: number, resource: UriComponents, options: FormattingOptions): Promise<ModelSingleEditOperation[] | undefined>;
+    $provideDocumentLinks(handle: number, resource: UriComponents): Promise<DocumentLink[] | undefined>;
+    $resolveDocumentLink(handle: number, link: DocumentLink): Promise<DocumentLink | undefined>;
 }
 
 export interface LanguagesMain {
@@ -662,6 +665,7 @@ export interface LanguagesMain {
     $clearDiagnostics(id: string): void;
     $changeDiagnostics(id: string, delta: [UriComponents, MarkerData[]][]): void;
     $registerDocumentFormattingSupport(handle: number, selector: SerializedDocumentFilter[]): void;
+    $registerDocumentLinkProvider(handle: number, selector: SerializedDocumentFilter[]): void;
 }
 
 export const PLUGIN_RPC_CONTEXT = {
