@@ -82,6 +82,8 @@ export class GitWidget extends ReactWidget implements StatefulWidget {
         super();
         this.id = 'theia-gitContainer';
         this.title.label = 'Git';
+        this.title.caption = 'Git';
+        this.title.iconClass = 'fa git-tab-icon';
         this.scrollContainer = GitWidget.Styles.CHANGES_CONTAINER;
         this.addClass('theia-git');
         this.node.tabIndex = 0;
@@ -104,7 +106,7 @@ export class GitWidget extends ReactWidget implements StatefulWidget {
                 if (GitStatusChangeEvent.is(gitEvent)) {
                     if (gitEvent.status.currentHead !== this.lastHead) {
                         this.lastHead = gitEvent.status.currentHead;
-                        this.lastCommit = await this.getLastCommit();
+                        this.lastCommit = gitEvent.status.currentHead ? await this.getLastCommit() : undefined;
                     }
                     this.status = gitEvent.status;
                     this.updateView(gitEvent.status);

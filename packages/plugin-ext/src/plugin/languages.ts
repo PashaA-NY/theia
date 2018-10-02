@@ -38,6 +38,7 @@ import {
     SerializedDocumentFilter,
     SignatureHelp,
     Hover,
+    Range,
     SingleEditOperation,
     FormattingOptions,
     Definition,
@@ -49,10 +50,11 @@ import { Diagnostics } from './languages/diagnostics';
 import { SignatureHelpAdapter } from './languages/signature';
 import { HoverAdapter } from './languages/hover';
 import { DocumentFormattingAdapter } from './languages/document-formatting';
+import { RangeFormattingAdapter } from './languages/range-formatting';
 import { DefinitionAdapter } from './languages/definition';
 import { LinkProviderAdapter } from './languages/link-provider';
 
-type Adapter = CompletionAdapter | SignatureHelpAdapter | HoverAdapter | DocumentFormattingAdapter | DefinitionAdapter | LinkProviderAdapter;
+type Adapter = CompletionAdapter | SignatureHelpAdapter | HoverAdapter | DocumentFormattingAdapter | RangeFormattingAdapter | DefinitionAdapter | LinkProviderAdapter;
 
 export class LanguagesExtImpl implements LanguagesExt {
 
@@ -231,14 +233,26 @@ export class LanguagesExtImpl implements LanguagesExt {
     }
     // ### Document Formatting Edit end
 
+    // ### Document Range Formatting Edit begin
+    registerDocumentRangeFormattingEditProvider(selector: theia.DocumentSelector, provider: theia.DocumentRangeFormattingEditProvider): theia.Disposable {
+        const callId = this.addNewAdapter(new RangeFormattingAdapter(provider, this.documents));
+        this.proxy.$registerRangeFormattingProvider(callId, this.transformDocumentSelector(selector));
+        return this.createDisposable(callId);
+    }
+
+    $provideDocumentRangeFormattingEdits(handle: number, resource: UriComponents, range: Range, options: FormattingOptions): Promise<SingleEditOperation[] | undefined> {
+        return this.withAdapter(handle, RangeFormattingAdapter, adapter => adapter.provideDocumentRangeFormattingEdits(URI.revive(resource), range, options));
+    }
+    // ### Document Range Formatting Edit end
+
     // ### Document Link Provider begin
     $provideDocumentLinks(handle: number, resource: UriComponents): Promise<DocumentLink[] | undefined> {
         return this.withAdapter(handle, LinkProviderAdapter, adapter => adapter.provideLinks(URI.revive(resource)));
     }
 
     $resolveDocumentLink(handle: number, link: DocumentLink): Promise<DocumentLink | undefined> {
-		return this.withAdapter(handle, LinkProviderAdapter, adapter => adapter.resolveLink(link));
-	}
+        return this.withAdapter(handle, LinkProviderAdapter, adapter => adapter.resolveLink(link));
+    }
 
     registerLinkProvider(selector: theia.DocumentSelector, provider: theia.DocumentLinkProvider): theia.Disposable {
         const callId = this.addNewAdapter(new LinkProviderAdapter(provider, this.documents));
